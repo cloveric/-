@@ -13,7 +13,7 @@ const QUOTE_STORAGE_KEY = 'zenone_quote_v1';
 // --- Custom Ink Wash Icons ---
 
 const InkSunIcon = ({ active }: { active: boolean }) => (
-  <svg viewBox="0 0 100 100" className="w-12 h-12 transition-transform duration-700 hover:scale-105">
+  <svg viewBox="0 0 100 100" className="w-10 h-10 transition-transform duration-700 hover:scale-105">
     <defs>
       <filter id="ink-blur-sun">
         <feGaussianBlur in="SourceGraphic" stdDeviation="0.5" />
@@ -39,7 +39,7 @@ const InkSunIcon = ({ active }: { active: boolean }) => (
 );
 
 const InkMoonIcon = ({ active }: { active: boolean }) => (
-  <svg viewBox="0 0 100 100" className="w-12 h-12 transition-transform duration-700 hover:scale-105">
+  <svg viewBox="0 0 100 100" className="w-10 h-10 transition-transform duration-700 hover:scale-105">
     <defs>
       <filter id="ink-blur-moon">
         <feGaussianBlur in="SourceGraphic" stdDeviation="0.6" />
