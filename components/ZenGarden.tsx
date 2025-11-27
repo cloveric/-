@@ -161,7 +161,7 @@ const ZenGarden: React.FC<ZenGardenProps> = ({ streak }) => {
   return (
     <div className="flex flex-col items-center justify-center p-0 mx-auto transition-all duration-700 relative">
       {styles}
-      <div className="w-48 h-48 relative flex items-end justify-center">
+      <div className="w-40 h-40 relative flex items-end justify-center">
         <svg width="100%" height="100%" viewBox="0 0 200 160" className="overflow-visible">
           {renderVisual()}
         </svg>

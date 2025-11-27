@@ -254,6 +254,7 @@ const App: React.FC = () => {
   };
 
   const todayRecord = getTodayRecord();
+  // Main container: fixed full height, flex column
   const containerClasses = "w-full h-[100dvh] sm:h-[90vh] sm:max-h-[850px] sm:max-w-[400px] sm:rounded-[2.5rem] sm:shadow-2xl sm:border-[8px] sm:border-white/50 bg-paper relative overflow-hidden flex flex-col transition-all duration-700";
 
   if (!currentUser) {
@@ -273,7 +274,8 @@ const App: React.FC = () => {
         
         <BuddhaBackground streak={streak} />
         
-        <header className="flex-none pt-6 pb-2 px-6 flex justify-between items-center relative z-10">
+        {/* Header - Fixed Height */}
+        <header className="flex-none pt-4 pb-2 px-6 flex justify-between items-center relative z-10">
           <button 
             className="flex items-center gap-2 text-stone-400 hover:text-stone-600 transition-colors group" 
             onClick={handleLogout} 
@@ -291,13 +293,16 @@ const App: React.FC = () => {
           <div className="w-8"></div>
         </header>
 
-        <main className="flex-1 flex flex-col px-6 py-2 relative z-10 min-h-0">
+        {/* Main Content Area */}
+        <main className="flex-1 flex flex-col px-4 relative z-10 min-h-0 overflow-hidden">
           
-          <section className="flex-[2] shrink-0 flex justify-center items-center py-2 relative z-20">
+          {/* Zen Garden - Fixed Height (Compact) */}
+          <section className="flex-none flex justify-center items-center py-1 relative z-20">
             <ZenGarden streak={streak} />
           </section>
 
-          <section className="flex-none py-2 mb-2">
+          {/* Quote - Fixed Height (Compact) */}
+          <section className="flex-none py-1 mb-2">
             <div className="relative">
               {loadingQuote ? (
                 <div className="animate-pulse flex justify-center">
@@ -305,12 +310,12 @@ const App: React.FC = () => {
                 </div>
               ) : (
                 <div className="text-center">
-                   <Sparkles size={10} className="inline-block text-clay mb-2 opacity-60" />
-                  <p className="text-sm font-serif leading-relaxed text-stone-600 tracking-wider line-clamp-3 px-4">
+                   <Sparkles size={10} className="inline-block text-clay mb-1 opacity-60" />
+                  <p className="text-xs font-serif leading-relaxed text-stone-600 tracking-wider line-clamp-2 px-4">
                     {quote?.text}
                   </p>
                   {quote?.source && (
-                    <p className="text-[10px] text-stone-400 font-serif tracking-widest mt-2">
+                    <p className="text-[9px] text-stone-400 font-serif tracking-widest mt-1">
                        {quote.source}
                     </p>
                   )}
@@ -319,18 +324,19 @@ const App: React.FC = () => {
             </div>
           </section>
 
-          <section className="flex-none grid grid-cols-2 gap-5 mb-6">
+          {/* Action Buttons - Fixed Height (Compact) */}
+          <section className="flex-none grid grid-cols-2 gap-3 mb-3">
             <button
               onClick={() => toggleSession('morning')}
               className={`
-                group relative py-3 rounded-xl border transition-all duration-700 ease-out flex flex-col items-center justify-center gap-2
+                group relative py-2 rounded-xl border transition-all duration-700 ease-out flex flex-col items-center justify-center gap-1
                 ${todayRecord.morning 
                   ? 'bg-white/80 border-clay/20 shadow-sm' 
                   : 'bg-white/40 border-transparent hover:bg-white/60'}
               `}
             >
               <InkSunIcon active={todayRecord.morning} />
-              <span className={`font-serif text-xs tracking-[0.2em] mt-1 transition-colors duration-500 ${todayRecord.morning ? 'text-clay font-bold' : 'text-stone-400'}`}>
+              <span className={`font-serif text-[10px] tracking-[0.2em] mt-0.5 transition-colors duration-500 ${todayRecord.morning ? 'text-clay font-bold' : 'text-stone-400'}`}>
                 早课
               </span>
             </button>
@@ -338,25 +344,26 @@ const App: React.FC = () => {
             <button
               onClick={() => toggleSession('evening')}
               className={`
-                group relative py-3 rounded-xl border transition-all duration-700 ease-out flex flex-col items-center justify-center gap-2
+                group relative py-2 rounded-xl border transition-all duration-700 ease-out flex flex-col items-center justify-center gap-1
                 ${todayRecord.evening 
                   ? 'bg-white/80 border-stone-300/30 shadow-sm' 
                   : 'bg-white/40 border-transparent hover:bg-white/60'}
               `}
             >
                <InkMoonIcon active={todayRecord.evening} />
-              <span className={`font-serif text-xs tracking-[0.2em] mt-1 transition-colors duration-500 ${todayRecord.evening ? 'text-stone-600 font-bold' : 'text-stone-400'}`}>
+              <span className={`font-serif text-[10px] tracking-[0.2em] mt-0.5 transition-colors duration-500 ${todayRecord.evening ? 'text-stone-600 font-bold' : 'text-stone-400'}`}>
                 晚课
               </span>
             </button>
           </section>
 
-          <section className="flex-[3] min-h-0 flex flex-col pb-4">
+          {/* Stats - Fills Remaining Space */}
+          <section className="flex-1 min-h-0 flex flex-col pb-4">
             <Stats records={records} />
           </section>
         </main>
 
-        <footer className="text-center text-stone-300 text-[9px] pb-4 font-serif tracking-[0.3em] opacity-50 relative z-10 flex-none">
+        <footer className="text-center text-stone-300 text-[9px] pb-3 font-serif tracking-[0.3em] opacity-50 relative z-10 flex-none">
            本来无一物
         </footer>
       </div>
