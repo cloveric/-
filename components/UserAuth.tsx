@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { ArrowRight, UserCircle } from 'lucide-react';
+import { ArrowRight, UserCircle, X } from 'lucide-react';
 
 interface UserAuthProps {
   users: string[];
   onLogin: (name: string) => void;
+  onDelete?: (name: string, e: React.MouseEvent) => void;
 }
 
-const UserAuth: React.FC<UserAuthProps> = ({ users, onLogin }) => {
+const UserAuth: React.FC<UserAuthProps> = ({ users, onLogin, onDelete }) => {
   const [inputValue, setInputValue] = useState('');
   const [error, setError] = useState('');
 
@@ -36,10 +37,21 @@ const UserAuth: React.FC<UserAuthProps> = ({ users, onLogin }) => {
                     <button 
                         key={user}
                         onClick={() => onLogin(user)}
-                        className="flex flex-col items-center gap-2 group"
+                        className="flex flex-col items-center gap-2 group relative"
                     >
-                        <div className="w-14 h-14 rounded-full bg-stone-100 border border-stone-200 flex items-center justify-center text-stone-400 group-hover:bg-bamboo/10 group-hover:text-bamboo group-hover:border-bamboo/30 transition-all duration-500">
+                        <div className="w-14 h-14 rounded-full bg-stone-100 border border-stone-200 flex items-center justify-center text-stone-400 group-hover:bg-bamboo/10 group-hover:text-bamboo group-hover:border-bamboo/30 transition-all duration-500 relative">
                              <span className="font-serif text-lg">{user[0]}</span>
+                             
+                             {/* Delete Button - Visible on Group Hover */}
+                             {onDelete && (
+                               <div 
+                                 onClick={(e) => onDelete(user, e)}
+                                 className="absolute -top-1 -right-1 w-5 h-5 bg-stone-200 rounded-full flex items-center justify-center text-stone-500 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100 hover:text-red-500"
+                                 title="删除记录"
+                               >
+                                 <X size={10} />
+                               </div>
+                             )}
                         </div>
                         <span className="text-xs text-stone-500 font-serif tracking-widest group-hover:text-stone-800 transition-colors">{user}</span>
                     </button>

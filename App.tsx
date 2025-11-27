@@ -1,22 +1,19 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { DailyRecord, QuoteData } from './types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { DailyRecord, QuoteData, ZenLevel } from './types';
 import ZenGarden from './components/ZenGarden';
 import Stats from './components/Stats';
 import UserAuth from './components/UserAuth';
 import { fetchZenQuote } from './services/geminiService';
-import { Sparkles, Volume2, VolumeX, User, LogOut } from 'lucide-react';
+import { Sparkles, User } from 'lucide-react';
 
 const USERS_KEY = 'zenone_users_v1';
-const DATA_PREFIX = 'zenone_data_'; // + username
+const DATA_PREFIX = 'zenone_data_';
 const QUOTE_STORAGE_KEY = 'zenone_quote_v1';
-
-// Slow, meditative Guzheng music
-const ZEN_AUDIO_URL = "https://cdn.pixabay.com/download/audio/2024/09/06/audio_47347a4659.mp3?filename=guzheng-123-239617.mp3";
 
 // --- Custom Ink Wash Icons ---
 
 const InkSunIcon = ({ active }: { active: boolean }) => (
-  <svg viewBox="0 0 100 100" className="w-16 h-16 transition-transform duration-700 hover:scale-105">
+  <svg viewBox="0 0 100 100" className="w-12 h-12 transition-transform duration-700 hover:scale-105">
     <defs>
       <filter id="ink-blur-sun">
         <feGaussianBlur in="SourceGraphic" stdDeviation="0.5" />
@@ -31,13 +28,6 @@ const InkSunIcon = ({ active }: { active: boolean }) => (
       style={{ filter: 'url(#ink-blur-sun)' }}
       className="transition-colors duration-500"
     />
-    <path 
-      d="M25 25 C 30 18, 40 15, 48 16" 
-      fill="none" 
-      stroke={active ? "#a68a64" : "#d6d3d1"} 
-      strokeWidth={active ? "3" : "2"}
-      className="opacity-60 transition-colors duration-500"
-    />
     <circle 
       cx="55" cy="50" r={active ? "12" : "10"} 
       fill={active ? "#d4b483" : "transparent"} 
@@ -49,7 +39,7 @@ const InkSunIcon = ({ active }: { active: boolean }) => (
 );
 
 const InkMoonIcon = ({ active }: { active: boolean }) => (
-  <svg viewBox="0 0 100 100" className="w-16 h-16 transition-transform duration-700 hover:scale-105">
+  <svg viewBox="0 0 100 100" className="w-12 h-12 transition-transform duration-700 hover:scale-105">
     <defs>
       <filter id="ink-blur-moon">
         <feGaussianBlur in="SourceGraphic" stdDeviation="0.6" />
@@ -64,36 +54,56 @@ const InkMoonIcon = ({ active }: { active: boolean }) => (
       style={{ filter: 'url(#ink-blur-moon)' }}
       className="transition-colors duration-500"
     />
-    <path 
-      d="M60 20 C 70 20, 75 30, 75 40" 
-      fill="none" 
-      stroke={active ? "#475569" : "#d6d3d1"} 
-      strokeWidth={active ? "2" : "1"} 
-      strokeLinecap="round"
-      className="opacity-30 transition-colors duration-500"
-    />
   </svg>
 );
 
-const LotusBackground = () => (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-         <svg viewBox="0 0 500 500" className="absolute -right-20 -bottom-20 w-[120%] h-auto opacity-[0.04] text-stone-900 fill-current rotate-[-10deg]">
-            <path d="M250 250 Q 200 150 250 50 Q 300 150 250 250" />
-            <path d="M250 250 Q 150 200 50 250 Q 150 300 250 250" />
-            <path d="M250 250 Q 200 350 250 450 Q 300 350 250 250" />
-            <path d="M250 250 Q 350 200 450 250 Q 350 300 250 250" />
-            <path d="M250 250 Q 220 180 250 120 Q 280 180 250 250" />
-            <path d="M250 250 Q 180 220 120 250 Q 180 280 250 250" />
-            <path d="M250 250 Q 220 320 250 380 Q 280 320 250 250" />
-            <path d="M250 250 Q 320 220 380 250 Q 320 280 250 250" />
-         </svg>
-         <svg viewBox="0 0 200 200" className="absolute left-[-50px] top-[20%] w-96 h-96 opacity-[0.03] text-stone-700 stroke-current fill-none" strokeWidth="1">
-             <circle cx="100" cy="100" r="40" />
-             <circle cx="100" cy="100" r="60" />
-             <circle cx="100" cy="100" r="90" />
-         </svg>
+const BuddhaBackground = ({ streak }: { streak: number }) => {
+  // Opacity scales with streak to symbolize "manifestation" of enlightenment
+  const opacity = Math.min(0.05 + (streak * 0.002), 0.18);
+  
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden z-0 flex items-end justify-center">
+         <div 
+            className="w-full h-full text-stone-900 transition-opacity duration-1000 ease-in-out"
+            style={{ opacity: opacity }}
+         >
+             <svg viewBox="0 0 400 600" preserveAspectRatio="xMidYMid slice" className="w-full h-full">
+                <defs>
+                  <filter id="ink-wash-buddha">
+                    <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="4" result="noise" />
+                    <feDisplacementMap in="SourceGraphic" in2="noise" scale="3" />
+                    <feGaussianBlur stdDeviation="0.5" />
+                  </filter>
+                </defs>
+                
+                <g filter="url(#ink-wash-buddha)" fill="none" stroke="currentColor" strokeLinecap="round">
+                    
+                    {/* Buddha Figure (Bottom Right - Side Profile Meditating) */}
+                    <g transform="translate(80, 200) scale(1.4)">
+                        {/* Head & Ushnisha */}
+                        <path d="M120 100 Q105 100 105 120 Q105 145 130 145" strokeWidth="2" />
+                        <path d="M115 95 Q125 90 135 100" strokeWidth="2" /> {/* Top bun */}
+
+                        {/* Back & Robes */}
+                        <path d="M105 120 Q80 140 70 180 Q60 240 100 260" strokeWidth="2.5" />
+                        
+                        {/* Knee/Legs folded */}
+                        <path d="M180 260 Q160 260 140 240" strokeWidth="2" />
+                        <path d="M100 260 L180 260" strokeWidth="2" />
+
+                        {/* Arm/Hand in Dhyana Mudra */}
+                        <path d="M130 145 Q150 150 155 180 Q160 210 140 220" strokeWidth="2" />
+                        <path d="M140 220 Q150 220 160 215" strokeWidth="1.5" />
+
+                        {/* Aura/Halo (Subtle) */}
+                        <circle cx="130" cy="120" r="35" strokeWidth="0.5" opacity="0.3" strokeDasharray="5,5" />
+                    </g>
+                </g>
+             </svg>
+         </div>
     </div>
-);
+  );
+};
 
 // -----------------------------
 
@@ -105,28 +115,9 @@ const App: React.FC = () => {
   const [quote, setQuote] = useState<QuoteData | null>(null);
   const [streak, setStreak] = useState(0);
   const [loadingQuote, setLoadingQuote] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Helper to get today's date string YYYY-MM-DD
   const getTodayStr = () => new Date().toISOString().split('T')[0];
 
-  // Initialize Audio
-  useEffect(() => {
-    audioRef.current = new Audio(ZEN_AUDIO_URL);
-    audioRef.current.loop = true;
-    audioRef.current.volume = 0.4;
-
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-    };
-  }, []);
-
-  // Load known users on mount
   useEffect(() => {
     const savedUsers = localStorage.getItem(USERS_KEY);
     if (savedUsers) {
@@ -134,7 +125,6 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Initialize User Data when user changes
   useEffect(() => {
     if (!currentUser) {
       setRecords([]);
@@ -153,8 +143,6 @@ const App: React.FC = () => {
       setStreak(0);
     }
 
-    // Load Quote (Shared across users or could be per user)
-    // We keep quote global for simplicity/cache efficiency
     const savedQuote = localStorage.getItem(QUOTE_STORAGE_KEY);
     if (savedQuote) {
       const parsedQuote: QuoteData = JSON.parse(savedQuote);
@@ -169,7 +157,6 @@ const App: React.FC = () => {
     }
   }, [currentUser]);
 
-  // Handle Login / User Creation
   const handleLogin = (username: string) => {
     if (!knownUsers.includes(username)) {
       const updatedUsers = [...knownUsers, username];
@@ -179,19 +166,22 @@ const App: React.FC = () => {
     setCurrentUser(username);
   };
 
-  const handleLogout = () => {
-    setCurrentUser(null);
+  const handleDeleteUser = (usernameToDelete: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (window.confirm(`确认要删除法号“${usernameToDelete}”及其所有修行记录吗？`)) {
+        const updatedUsers = knownUsers.filter(u => u !== usernameToDelete);
+        setKnownUsers(updatedUsers);
+        localStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
+        localStorage.removeItem(`${DATA_PREFIX}${usernameToDelete}`);
+        
+        if (currentUser === usernameToDelete) {
+            setCurrentUser(null);
+        }
+    }
   };
 
-  const toggleAudio = () => {
-    if (!audioRef.current) return;
-    
-    if (isPlaying) {
-      audioRef.current.pause();
-    } else {
-      audioRef.current.play().catch(e => console.log("Audio play failed:", e));
-    }
-    setIsPlaying(!isPlaying);
+  const handleLogout = () => {
+    setCurrentUser(null);
   };
 
   const refreshQuote = async () => {
@@ -213,7 +203,6 @@ const App: React.FC = () => {
     const yesterdayDate = new Date();
     yesterdayDate.setDate(yesterdayDate.getDate() - 1);
     
-    // Check if streak continues from today or yesterday
     const todayEntry = sorted.find(r => r.date === today);
     const startCheckingFrom = (todayEntry && (todayEntry.morning || todayEntry.evening)) 
       ? new Date() 
@@ -257,8 +246,6 @@ const App: React.FC = () => {
 
     setRecords(updatedRecords);
     calculateStreak(updatedRecords);
-    
-    // Persist to user-specific storage
     localStorage.setItem(`${DATA_PREFIX}${currentUser}`, JSON.stringify(updatedRecords));
   };
 
@@ -267,120 +254,112 @@ const App: React.FC = () => {
   };
 
   const todayRecord = getTodayRecord();
-
-  // --- RENDER ---
+  const containerClasses = "w-full h-[100dvh] sm:h-[90vh] sm:max-h-[850px] sm:max-w-[400px] sm:rounded-[2.5rem] sm:shadow-2xl sm:border-[8px] sm:border-white/50 bg-paper relative overflow-hidden flex flex-col transition-all duration-700";
 
   if (!currentUser) {
     return (
-      <div className="min-h-screen max-w-md mx-auto bg-paper relative overflow-hidden font-serif">
-         <LotusBackground />
-         <UserAuth users={knownUsers} onLogin={handleLogin} />
+      <div className="min-h-[100dvh] w-full flex items-center justify-center bg-[#f0eee9] sm:p-4">
+        <div className={containerClasses}>
+           <BuddhaBackground streak={0} />
+           <UserAuth users={knownUsers} onLogin={handleLogin} onDelete={handleDeleteUser} />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen max-w-md mx-auto bg-paper text-ink pb-20 relative overflow-hidden transition-colors duration-1000 font-serif">
-      
-      {/* Background Decor */}
-      <LotusBackground />
-      <div className="absolute top-[-100px] right-[-100px] w-64 h-64 bg-stone-200/30 rounded-full blur-3xl pointer-events-none"></div>
-      <div className="absolute bottom-[-50px] left-[-50px] w-80 h-80 bg-bamboo/5 rounded-full blur-3xl pointer-events-none"></div>
+    <div className="min-h-[100dvh] w-full flex items-center justify-center bg-[#f0eee9] sm:p-4 font-serif">
+      <div className={containerClasses}>
+        
+        <BuddhaBackground streak={streak} />
+        
+        <header className="flex-none pt-6 pb-2 px-6 flex justify-between items-center relative z-10">
+          <button 
+            className="flex items-center gap-2 text-stone-400 hover:text-stone-600 transition-colors group" 
+            onClick={handleLogout} 
+            title="切换用户"
+          >
+               <div className="w-8 h-8 rounded-full border border-stone-200 flex items-center justify-center group-hover:bg-white transition-colors">
+                  <User size={14} />
+               </div>
+          </button>
+          
+          <div className="text-center absolute left-1/2 -translate-x-1/2">
+            <h1 className="text-lg font-bold tracking-[0.3em] text-ink/80" style={{ fontFamily: '"Noto Serif SC", serif' }}>禅一</h1>
+          </div>
+          
+          <div className="w-8"></div>
+        </header>
 
-      {/* Header */}
-      <header className="pt-10 px-6 mb-8 flex justify-between items-center relative z-10">
-        <div className="flex items-center gap-2 text-stone-500 cursor-pointer hover:text-stone-800 transition-colors" onClick={handleLogout} title="切换用户">
-             <User size={18} />
-             <span className="text-sm font-medium tracking-widest">{currentUser}</span>
-        </div>
-        <div className="text-center absolute left-1/2 -translate-x-1/2">
-          <h1 className="text-3xl font-bold tracking-widest text-ink/80 mb-1" style={{ fontFamily: '"Noto Serif SC", serif' }}>禅一</h1>
-        </div>
-        <button 
-          onClick={toggleAudio}
-          className={`w-10 h-10 flex items-center justify-center transition-all duration-500 rounded-full ${isPlaying ? 'text-bamboo bg-bamboo/10' : 'text-stone-300 hover:text-stone-500'}`}
-          aria-label="Toggle Background Music"
-        >
-          {isPlaying ? <Volume2 size={18} /> : <VolumeX size={18} />}
-        </button>
-      </header>
+        <main className="flex-1 flex flex-col px-6 py-2 relative z-10 min-h-0">
+          
+          <section className="flex-[2] shrink-0 flex justify-center items-center py-2 relative z-20">
+            <ZenGarden streak={streak} />
+          </section>
 
-      {/* Zen Garden Visual */}
-      <section className="mb-8 relative z-10">
-        <ZenGarden streak={streak} />
-      </section>
-
-      {/* Quote Card */}
-      <section className="px-6 mb-10 relative z-10">
-        <div className="relative py-4 px-2">
-          {loadingQuote ? (
-            <div className="animate-pulse flex justify-center">
-              <div className="h-1 bg-stone-200 rounded w-24"></div>
-            </div>
-          ) : (
-            <div className="text-center">
-               <Sparkles size={12} className="inline-block text-clay mb-2 opacity-50" />
-              <p className="text-lg font-serif leading-loose text-ink/80 mb-2 tracking-wide">
-                {quote?.text}
-              </p>
-              {quote?.source && (
-                <p className="text-xs text-stone-400 font-serif tracking-widest mt-1">
-                   {quote.source}
-                </p>
+          <section className="flex-none py-2 mb-2">
+            <div className="relative">
+              {loadingQuote ? (
+                <div className="animate-pulse flex justify-center">
+                  <div className="h-0.5 bg-stone-200 rounded w-12"></div>
+                </div>
+              ) : (
+                <div className="text-center">
+                   <Sparkles size={10} className="inline-block text-clay mb-2 opacity-60" />
+                  <p className="text-sm font-serif leading-relaxed text-stone-600 tracking-wider line-clamp-3 px-4">
+                    {quote?.text}
+                  </p>
+                  {quote?.source && (
+                    <p className="text-[10px] text-stone-400 font-serif tracking-widest mt-2">
+                       {quote.source}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
-          )}
-        </div>
-      </section>
+          </section>
 
-      {/* Action Buttons */}
-      <section className="px-6 grid grid-cols-2 gap-6 mb-12 relative z-10">
-        {/* Morning Button */}
-        <button
-          onClick={() => toggleSession('morning')}
-          className={`
-            group relative p-4 rounded-[2rem] border transition-all duration-700 ease-out flex flex-col items-center justify-center h-44
-            ${todayRecord.morning 
-              ? 'bg-[#fdfbf7] border-clay/30 shadow-inner' 
-              : 'bg-white/80 border-transparent shadow-lg shadow-stone-200/30 hover:-translate-y-1'}
-          `}
-        >
-          <div className="mb-4 relative">
-             <InkSunIcon active={todayRecord.morning} />
-          </div>
-          <span className={`font-serif text-lg tracking-[0.2em] transition-colors duration-500 ${todayRecord.morning ? 'text-clay font-bold' : 'text-stone-400'}`}>
-            早课
-          </span>
-        </button>
+          <section className="flex-none grid grid-cols-2 gap-5 mb-6">
+            <button
+              onClick={() => toggleSession('morning')}
+              className={`
+                group relative py-3 rounded-xl border transition-all duration-700 ease-out flex flex-col items-center justify-center gap-2
+                ${todayRecord.morning 
+                  ? 'bg-white/80 border-clay/20 shadow-sm' 
+                  : 'bg-white/40 border-transparent hover:bg-white/60'}
+              `}
+            >
+              <InkSunIcon active={todayRecord.morning} />
+              <span className={`font-serif text-xs tracking-[0.2em] mt-1 transition-colors duration-500 ${todayRecord.morning ? 'text-clay font-bold' : 'text-stone-400'}`}>
+                早课
+              </span>
+            </button>
 
-        {/* Evening Button */}
-        <button
-          onClick={() => toggleSession('evening')}
-          className={`
-            group relative p-4 rounded-[2rem] border transition-all duration-700 ease-out flex flex-col items-center justify-center h-44
-            ${todayRecord.evening 
-              ? 'bg-[#fcfcfc] border-stone-300/30 shadow-inner' 
-              : 'bg-white/80 border-transparent shadow-lg shadow-stone-200/30 hover:-translate-y-1'}
-          `}
-        >
-          <div className="mb-4 relative">
-            <InkMoonIcon active={todayRecord.evening} />
-          </div>
-          <span className={`font-serif text-lg tracking-[0.2em] transition-colors duration-500 ${todayRecord.evening ? 'text-stone-600 font-bold' : 'text-stone-400'}`}>
-            晚课
-          </span>
-        </button>
-      </section>
+            <button
+              onClick={() => toggleSession('evening')}
+              className={`
+                group relative py-3 rounded-xl border transition-all duration-700 ease-out flex flex-col items-center justify-center gap-2
+                ${todayRecord.evening 
+                  ? 'bg-white/80 border-stone-300/30 shadow-sm' 
+                  : 'bg-white/40 border-transparent hover:bg-white/60'}
+              `}
+            >
+               <InkMoonIcon active={todayRecord.evening} />
+              <span className={`font-serif text-xs tracking-[0.2em] mt-1 transition-colors duration-500 ${todayRecord.evening ? 'text-stone-600 font-bold' : 'text-stone-400'}`}>
+                晚课
+              </span>
+            </button>
+          </section>
 
-      {/* Statistics */}
-      <section className="px-6 pb-10 relative z-10">
-        <Stats records={records} />
-      </section>
+          <section className="flex-[3] min-h-0 flex flex-col pb-4">
+            <Stats records={records} />
+          </section>
+        </main>
 
-      {/* Footer */}
-      <footer className="text-center text-stone-300 text-[10px] pb-6 font-serif tracking-widest opacity-60 relative z-10">
-         日日是好日
-      </footer>
+        <footer className="text-center text-stone-300 text-[9px] pb-4 font-serif tracking-[0.3em] opacity-50 relative z-10 flex-none">
+           本来无一物
+        </footer>
+      </div>
     </div>
   );
 };

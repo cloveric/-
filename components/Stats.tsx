@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { DailyRecord } from '../types';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Calendar, BarChart3, Grid } from 'lucide-react';
 
 interface StatsProps {
   records: DailyRecord[];
@@ -17,17 +16,18 @@ const getStatus = (morning: boolean | undefined, evening: boolean | undefined): 
   return 0;
 };
 
-// Color Palette for Logic
+// Color Palette for Logic - Softer, more Zen
 const COLORS = {
-  NONE: '#e5e5e5',       // Mist
-  MORNING: '#d4b483',    // Clay/Gold (Warm)
-  EVENING: '#94a3b8',    // Slate/Ink (Cool)
-  BOTH: '#5c7c64',       // Bamboo (Complete)
+  NONE: '#e5e5e5',       
+  MORNING: '#d4b483',    
+  EVENING: '#94a3b8',    
+  BOTH: '#5c7c64',       
 };
 
 const Stats: React.FC<StatsProps> = ({ records }) => {
   const [viewMode, setViewMode] = useState<ViewMode>('week');
-  const [displayDate, setDisplayDate] = useState(new Date());
+  const [displayDate, setDisplayDate] = useState(new Date()); // For Month View
+  const [displayYear, setDisplayYear] = useState(new Date().getFullYear()); // For Year View
 
   const totalSessions = records.reduce((acc, curr) => {
     return acc + (curr.morning ? 1 : 0) + (curr.evening ? 1 : 0);
@@ -46,7 +46,7 @@ const Stats: React.FC<StatsProps> = ({ records }) => {
 
       const dayName = new Intl.DateTimeFormat('zh-CN', { weekday: 'short' }).format(d);
       // Logic for chart height/visuals
-      const height = status === 3 ? 2 : (status > 0 ? 1 : 0.1); 
+      const height = status === 3 ? 100 : (status > 0 ? 60 : 5); 
       
       last7Days.push({ name: dayName, date: dateStr, status, height });
     }
@@ -76,31 +76,29 @@ const Stats: React.FC<StatsProps> = ({ records }) => {
     return days;
   }, [records, displayDate]);
 
-  // --- YEARLY DATA (Grouped by Month) ---
-  const yearlyDataGrouped = useMemo(() => {
-    const today = new Date();
-    const groups = [];
-    
-    // We want to show the last 12 months, ending with current month
-    for (let i = 11; i >= 0; i--) {
-        const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-        const year = d.getFullYear();
-        const month = d.getMonth(); // 0-11
-        const monthName = new Intl.DateTimeFormat('zh-CN', { month: 'short' }).format(d);
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        
+  // --- YEARLY DATA (Specific Selected Year) ---
+  const yearlyData = useMemo(() => {
+    const months = [];
+    // Generate data for all 12 months of the selected displayYear
+    for (let m = 0; m < 12; m++) {
+        const daysInMonth = new Date(displayYear, m + 1, 0).getDate();
         const monthDays = [];
-        for (let day = 1; day <= daysInMonth; day++) {
-            const dateObj = new Date(year, month, day);
-            const dateStr = dateObj.toISOString().split('T')[0];
+        for (let d = 1; d <= daysInMonth; d++) {
+            // Note: Months are 0-indexed in JS Date, but we need correct ISO string
+            const dateObj = new Date(displayYear, m, d);
+            const y = dateObj.getFullYear();
+            const mon = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            const dateStr = `${y}-${mon}-${day}`;
+
             const record = records.find(r => r.date === dateStr);
             const status = getStatus(record?.morning, record?.evening);
-            monthDays.push({ date: dateStr, status });
+            monthDays.push({ status, date: dateStr });
         }
-        groups.push({ year, month, monthName, days: monthDays });
+        months.push({ monthIndex: m, days: monthDays });
     }
-    return groups;
-  }, [records]);
+    return months;
+  }, [records, displayYear]);
 
   // Helper for colors
   const getColor = (status: number) => {
@@ -127,50 +125,47 @@ const Stats: React.FC<StatsProps> = ({ records }) => {
     setDisplayDate(newDate);
   };
 
+  const changeYear = (delta: number) => {
+    setDisplayYear(prev => prev + delta);
+  };
+
   return (
-    <div className="w-full bg-white/60 backdrop-blur-sm p-6 rounded-3xl border border-stone-100 shadow-sm mt-6 relative overflow-hidden">
-      <div className="flex justify-between items-center mb-6 relative z-10">
-        <h3 className="text-stone-600 font-serif text-lg tracking-widest">修行足迹</h3>
-        <div className="flex bg-stone-100 rounded-lg p-1">
-          <button 
-            onClick={() => setViewMode('week')}
-            className={`p-1.5 rounded-md transition-all ${viewMode === 'week' ? 'bg-white shadow-sm text-stone-700' : 'text-stone-400'}`}
-          >
-            <BarChart3 size={16} />
-          </button>
-          <button 
-            onClick={() => setViewMode('month')}
-            className={`p-1.5 rounded-md transition-all ${viewMode === 'month' ? 'bg-white shadow-sm text-stone-700' : 'text-stone-400'}`}
-          >
-            <Calendar size={16} />
-          </button>
-          <button 
-            onClick={() => setViewMode('year')}
-            className={`p-1.5 rounded-md transition-all ${viewMode === 'year' ? 'bg-white shadow-sm text-stone-700' : 'text-stone-400'}`}
-          >
-            <Grid size={16} />
-          </button>
+    <div className="w-full flex flex-col h-full bg-white/30 rounded-2xl p-4 backdrop-blur-sm border border-white/40">
+      
+      {/* Header / Tabs */}
+      <div className="flex justify-between items-center mb-4 flex-none">
+        <span className="text-xs font-serif text-stone-400 tracking-widest pl-1">足迹 · {totalSessions}座</span>
+        <div className="flex bg-stone-200/50 rounded-lg p-0.5 gap-1">
+           {['week', 'month', 'year'].map((mode) => (
+             <button
+                key={mode}
+                onClick={() => setViewMode(mode as ViewMode)}
+                className={`
+                    px-3 py-1 rounded-md text-[10px] font-serif tracking-widest transition-all duration-300
+                    ${viewMode === mode 
+                        ? 'bg-white text-stone-700 shadow-sm' 
+                        : 'text-stone-400 hover:text-stone-600'}
+                `}
+             >
+                {mode === 'week' ? '周' : mode === 'month' ? '月' : '年'}
+             </button>
+           ))}
         </div>
       </div>
-      
-      {/* Legend */}
-      <div className="flex justify-end gap-3 text-[10px] text-stone-400 mb-4 font-sans relative z-10">
-         <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{backgroundColor: COLORS.MORNING}}></span>早课</div>
-         <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{backgroundColor: COLORS.EVENING}}></span>晚课</div>
-         <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{backgroundColor: COLORS.BOTH}}></span>圆满</div>
-      </div>
 
+      <div className="flex-1 relative min-h-0 w-full">
       {/* --- WEEK VIEW --- */}
       {viewMode === 'week' && (
-        <div className="h-48 w-full animate-in fade-in duration-500 relative z-10">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={weeklyData}>
+        <div className="absolute inset-0 w-full h-full animate-in fade-in duration-700 z-10 flex items-end pb-2">
+          <ResponsiveContainer width="100%" height="90%">
+            <BarChart data={weeklyData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
               <XAxis 
                 dataKey="name" 
                 axisLine={false} 
                 tickLine={false} 
-                tick={{ fill: '#8f8f8f', fontSize: 12, fontFamily: 'serif' }} 
+                tick={{ fill: '#a8a29e', fontSize: 10, fontFamily: '"Noto Serif SC", serif' }} 
                 dy={10}
+                interval={0}
               />
               <Tooltip 
                 cursor={{ fill: 'transparent' }}
@@ -178,7 +173,7 @@ const Stats: React.FC<StatsProps> = ({ records }) => {
                     if (active && payload && payload.length) {
                         const data = payload[0].payload;
                         return (
-                            <div className="bg-white/90 backdrop-blur border border-stone-100 p-2 rounded-lg shadow-sm text-xs text-stone-600 font-serif">
+                            <div className="bg-white/95 border border-stone-100 px-2 py-1 rounded shadow-sm text-[10px] text-stone-600 font-serif">
                                 {getStatusLabel(data.status)}
                             </div>
                         )
@@ -186,7 +181,7 @@ const Stats: React.FC<StatsProps> = ({ records }) => {
                     return null;
                 }}
               />
-              <Bar dataKey="height" radius={[4, 4, 4, 4]} barSize={24} animationDuration={1000}>
+              <Bar dataKey="height" radius={[4, 4, 4, 4]} barSize={12} animationDuration={1000}>
                 {weeklyData.map((entry, index) => (
                   <Cell 
                     key={`cell-${index}`} 
@@ -201,29 +196,31 @@ const Stats: React.FC<StatsProps> = ({ records }) => {
 
       {/* --- MONTH VIEW --- */}
       {viewMode === 'month' && (
-        <div className="animate-in fade-in duration-500 relative z-10">
-           <div className="flex justify-between items-center mb-4 px-2">
-              <button onClick={() => changeMonth(-1)} className="text-stone-400 hover:text-stone-600 font-serif">←</button>
-              <span className="text-stone-700 font-serif font-bold">
-                {displayDate.getFullYear()}年 {displayDate.getMonth() + 1}月
+        <div className="animate-in fade-in duration-700 relative z-10 h-full flex flex-col">
+           <div className="flex justify-between items-center mb-4 px-2 flex-none">
+              <button onClick={() => changeMonth(-1)} className="text-stone-400 hover:text-stone-600 font-serif text-sm px-2">←</button>
+              <span className="text-stone-600 font-serif font-bold text-sm tracking-widest">
+                {displayDate.getFullYear()} · {displayDate.getMonth() + 1}月
               </span>
-              <button onClick={() => changeMonth(1)} className="text-stone-400 hover:text-stone-600 font-serif">→</button>
+              <button onClick={() => changeMonth(1)} className="text-stone-400 hover:text-stone-600 font-serif text-sm px-2">→</button>
            </div>
-           <div className="grid grid-cols-7 gap-1 text-center mb-2">
+           
+           <div className="grid grid-cols-7 gap-2 text-center mb-2">
              {['日', '一', '二', '三', '四', '五', '六'].map(day => (
-               <div key={day} className="text-xs text-stone-400 font-serif">{day}</div>
+               <div key={day} className="text-[9px] text-stone-400 font-serif">{day}</div>
              ))}
            </div>
-           <div className="grid grid-cols-7 gap-2">
+           
+           <div className="grid grid-cols-7 gap-2 flex-1 overflow-y-auto custom-scrollbar content-start">
              {monthlyData.map((d, i) => (
                <div key={i} className="aspect-square flex items-center justify-center relative">
                  {d && (
                    <>
                      <div 
-                        className="absolute inset-0 rounded-full transition-colors duration-500"
-                        style={{ backgroundColor: d.status > 0 ? getColor(d.status) : 'transparent', opacity: d.status === 3 ? 1 : 0.6 }}
+                        className="absolute inset-0 rounded-full transition-all duration-500 transform hover:scale-110"
+                        style={{ backgroundColor: d.status > 0 ? getColor(d.status) : 'transparent', opacity: d.status === 3 ? 1 : 0.7 }}
                      ></div>
-                     <span className={`relative text-sm z-10 font-serif ${d.status === 3 ? 'text-white' : 'text-stone-600'}`}>
+                     <span className={`relative text-[10px] z-10 font-serif ${d.status === 3 ? 'text-white' : 'text-stone-500'}`}>
                        {d.day}
                      </span>
                    </>
@@ -234,20 +231,34 @@ const Stats: React.FC<StatsProps> = ({ records }) => {
         </div>
       )}
 
-      {/* --- YEAR VIEW (Grouped) --- */}
+      {/* --- YEAR VIEW (Specific Year) --- */}
       {viewMode === 'year' && (
-        <div className="animate-in fade-in duration-500 relative z-10">
-          <h4 className="text-center text-xs text-stone-400 mb-4 font-serif">过去十二个月</h4>
-          <div className="grid grid-cols-3 gap-x-2 gap-y-4 max-h-[300px] overflow-y-auto custom-scrollbar p-1">
-            {yearlyDataGrouped.map((group, i) => (
-              <div key={i} className="flex flex-col items-center">
-                 <span className="text-[10px] text-stone-400 mb-1 font-serif scale-90">{group.monthName}</span>
-                 <div className="grid grid-cols-7 gap-[2px]">
-                    {group.days.map((day, dIndex) => (
+        <div className="animate-in fade-in duration-700 relative z-10 h-full flex flex-col">
+          {/* Year Navigation Header */}
+          <div className="flex justify-between items-center mb-4 px-2 flex-none">
+              <button onClick={() => changeYear(-1)} className="text-stone-400 hover:text-stone-600 font-serif text-sm px-2">←</button>
+              <span className="text-stone-600 font-serif font-bold text-sm tracking-widest">
+                {displayYear}年
+              </span>
+              <button onClick={() => changeYear(1)} className="text-stone-400 hover:text-stone-600 font-serif text-sm px-2">→</button>
+           </div>
+
+          {/* 12-Month Grid */}
+          <div className="grid grid-cols-3 gap-x-3 gap-y-6 flex-1 overflow-y-auto custom-scrollbar content-start pb-4 pr-1">
+            {yearlyData.map((monthData) => (
+              <div key={monthData.monthIndex} className="flex flex-col items-center">
+                 {/* Month Label */}
+                 <span className="text-[10px] text-stone-500 mb-2 font-serif font-bold opacity-80 border-b border-stone-200/50 pb-0.5 w-full text-center">
+                    {monthData.monthIndex + 1}月
+                 </span>
+                 
+                 {/* Days Dots - Increased size for visibility */}
+                 <div className="grid grid-cols-7 gap-0.5">
+                    {monthData.days.map((day, idx) => (
                         <div 
-                            key={dIndex}
+                            key={idx}
                             title={`${day.date}: ${getStatusLabel(day.status)}`}
-                            className="w-[3px] h-[3px] rounded-[0.5px]"
+                            className="w-[4px] h-[4px] rounded-[1px] transition-colors duration-300"
                             style={{ backgroundColor: getColor(day.status) }}
                         ></div>
                     ))}
@@ -257,12 +268,6 @@ const Stats: React.FC<StatsProps> = ({ records }) => {
           </div>
         </div>
       )}
-
-      <div className="flex justify-center mt-6 px-4 pt-4 border-t border-stone-100 text-sm text-stone-500 relative z-10">
-        <div className="text-center">
-          <p className="text-xs text-stone-400 mb-1">累计修习</p>
-          <p className="text-lg font-serif text-ink tracking-widest">{totalSessions} <span className="text-xs">座</span></p>
-        </div>
       </div>
     </div>
   );
