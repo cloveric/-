@@ -183,10 +183,6 @@ const Stats: React.FC<StatsProps> = ({ records, onToggleRecord }) => {
       {/* --- WEEK VIEW --- */}
       {viewMode === 'week' && (
         <div className="absolute inset-0 w-full h-full animate-in fade-in duration-700 z-10 flex items-end pb-2">
-            {/* Legend/Hint for Backfill */}
-            <div className="absolute top-0 right-0 text-[9px] text-stone-300 font-serif pointer-events-none">
-               点击柱形可补录
-            </div>
           <ResponsiveContainer width="100%" height="90%">
             <BarChart data={weeklyData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
               <XAxis 
