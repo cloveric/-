@@ -5,57 +5,11 @@ import Stats from './components/Stats';
 import UserAuth from './components/UserAuth';
 import { fetchZenQuote } from './services/geminiService';
 import { Sparkles, User } from 'lucide-react';
+import { InkSunIcon, InkMoonIcon } from './components/ZenIcons';
 
 const USERS_KEY = 'zenone_users_v1';
 const DATA_PREFIX = 'zenone_data_';
 const QUOTE_STORAGE_KEY = 'zenone_quote_v1';
-
-// --- Custom Ink Wash Icons ---
-
-const InkSunIcon = ({ active }: { active: boolean }) => (
-  <svg viewBox="0 0 100 100" className="w-10 h-10 transition-transform duration-700 hover:scale-105">
-    <defs>
-      <filter id="ink-blur-sun">
-        <feGaussianBlur in="SourceGraphic" stdDeviation="0.5" />
-      </filter>
-    </defs>
-    <path 
-      d="M50 15 C 75 15, 90 35, 85 60 C 80 85, 55 90, 35 85 C 15 80, 10 50, 25 25" 
-      fill="none" 
-      stroke={active ? "#a68a64" : "#d6d3d1"} 
-      strokeWidth={active ? "4" : "3"} 
-      strokeLinecap="round"
-      style={{ filter: 'url(#ink-blur-sun)' }}
-      className="transition-colors duration-500"
-    />
-    <circle 
-      cx="55" cy="50" r={active ? "12" : "10"} 
-      fill={active ? "#d4b483" : "transparent"} 
-      stroke={active ? "none" : "#d6d3d1"}
-      strokeWidth="2"
-      className="transition-all duration-700"
-    />
-  </svg>
-);
-
-const InkMoonIcon = ({ active }: { active: boolean }) => (
-  <svg viewBox="0 0 100 100" className="w-10 h-10 transition-transform duration-700 hover:scale-105">
-    <defs>
-      <filter id="ink-blur-moon">
-        <feGaussianBlur in="SourceGraphic" stdDeviation="0.6" />
-      </filter>
-    </defs>
-    <path 
-      d="M60 20 C 40 25, 30 50, 40 80 C 42 85, 50 90, 60 88" 
-      fill="none" 
-      stroke={active ? "#475569" : "#d6d3d1"} 
-      strokeWidth={active ? "5" : "3"} 
-      strokeLinecap="round"
-      style={{ filter: 'url(#ink-blur-moon)' }}
-      className="transition-colors duration-500"
-    />
-  </svg>
-);
 
 const BuddhaBackground = ({ streak }: { streak: number }) => {
   // Opacity scales with streak to symbolize "manifestation" of enlightenment
@@ -105,6 +59,14 @@ const BuddhaBackground = ({ streak }: { streak: number }) => {
   );
 };
 
+// Helper: Get local YYYY-MM-DD string to fix timezone bugs
+const getLocalISOString = (date: Date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 // -----------------------------
 
 const App: React.FC = () => {
@@ -116,7 +78,8 @@ const App: React.FC = () => {
   const [streak, setStreak] = useState(0);
   const [loadingQuote, setLoadingQuote] = useState(false);
 
-  const getTodayStr = () => new Date().toISOString().split('T')[0];
+  // Use local date helper
+  const getTodayStr = () => getLocalISOString(new Date());
 
   useEffect(() => {
     const savedUsers = localStorage.getItem(USERS_KEY);
@@ -168,7 +131,7 @@ const App: React.FC = () => {
 
   const handleDeleteUser = (usernameToDelete: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (window.confirm(`确认要删除法号“${usernameToDelete}”及其所有修行记录吗？`)) {
+    if (window.confirm(`确认要删除名称“${usernameToDelete}”及其所有修行记录吗？`)) {
         const updatedUsers = knownUsers.filter(u => u !== usernameToDelete);
         setKnownUsers(updatedUsers);
         localStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
@@ -200,10 +163,13 @@ const App: React.FC = () => {
     const sorted = [...data].sort((a, b) => b.date.localeCompare(a.date));
     let currentStreak = 0;
     const today = getTodayStr();
+    
+    // Check local date for yesterday
     const yesterdayDate = new Date();
     yesterdayDate.setDate(yesterdayDate.getDate() - 1);
     
     const todayEntry = sorted.find(r => r.date === today);
+    // Start counting from today if today is done, otherwise start from yesterday
     const startCheckingFrom = (todayEntry && (todayEntry.morning || todayEntry.evening)) 
       ? new Date() 
       : yesterdayDate;
@@ -211,7 +177,7 @@ const App: React.FC = () => {
     let checkDate = startCheckingFrom;
     
     while (true) {
-      const dateStr = checkDate.toISOString().split('T')[0];
+      const dateStr = getLocalISOString(checkDate);
       const entry = data.find(r => r.date === dateStr);
       
       if (entry && (entry.morning || entry.evening)) {
@@ -224,12 +190,17 @@ const App: React.FC = () => {
     setStreak(currentStreak);
   };
 
-  const toggleSession = (type: 'morning' | 'evening') => {
+  /**
+   * Toggles session status.
+   * @param type 'morning' or 'evening'
+   * @param targetDateStr Optional date string (YYYY-MM-DD). If provided, updates that specific date. Defaults to today.
+   */
+  const toggleSession = (type: 'morning' | 'evening', targetDateStr?: string) => {
     if (!currentUser) return;
 
-    const today = getTodayStr();
+    const dateToUpdate = targetDateStr || getTodayStr();
     const updatedRecords = [...records];
-    const existingIndex = updatedRecords.findIndex(r => r.date === today);
+    const existingIndex = updatedRecords.findIndex(r => r.date === dateToUpdate);
 
     if (existingIndex >= 0) {
       updatedRecords[existingIndex] = {
@@ -238,7 +209,7 @@ const App: React.FC = () => {
       };
     } else {
       updatedRecords.push({
-        date: today,
+        date: dateToUpdate,
         morning: type === 'morning',
         evening: type === 'evening'
       });
@@ -335,7 +306,9 @@ const App: React.FC = () => {
                   : 'bg-white/40 border-transparent hover:bg-white/60'}
               `}
             >
-              <InkSunIcon active={todayRecord.morning} />
+              <div className="w-10 h-10">
+                <InkSunIcon active={todayRecord.morning} />
+              </div>
               <span className={`font-serif text-[10px] tracking-[0.2em] mt-0.5 transition-colors duration-500 ${todayRecord.morning ? 'text-clay font-bold' : 'text-stone-400'}`}>
                 早课
               </span>
@@ -350,7 +323,9 @@ const App: React.FC = () => {
                   : 'bg-white/40 border-transparent hover:bg-white/60'}
               `}
             >
-               <InkMoonIcon active={todayRecord.evening} />
+               <div className="w-10 h-10">
+                 <InkMoonIcon active={todayRecord.evening} />
+               </div>
               <span className={`font-serif text-[10px] tracking-[0.2em] mt-0.5 transition-colors duration-500 ${todayRecord.evening ? 'text-stone-600 font-bold' : 'text-stone-400'}`}>
                 晚课
               </span>
@@ -359,7 +334,7 @@ const App: React.FC = () => {
 
           {/* Stats - Fills Remaining Space */}
           <section className="flex-1 min-h-0 flex flex-col pb-4">
-            <Stats records={records} />
+            <Stats records={records} onToggleRecord={toggleSession} />
           </section>
         </main>
 

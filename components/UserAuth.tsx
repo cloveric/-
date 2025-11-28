@@ -15,7 +15,7 @@ const UserAuth: React.FC<UserAuthProps> = ({ users, onLogin, onDelete }) => {
     e.preventDefault();
     const name = inputValue.trim();
     if (!name) {
-        setError('请输入您的法号');
+        setError('请输入您的名称');
         return;
     }
     onLogin(name);
@@ -69,7 +69,7 @@ const UserAuth: React.FC<UserAuthProps> = ({ users, onLogin, onDelete }) => {
                   setInputValue(e.target.value);
                   setError('');
               }}
-              placeholder="请输入您的法号"
+              placeholder="请输入您的名称"
               className="w-full bg-transparent border-b border-stone-300 py-3 text-center text-lg text-stone-800 placeholder-stone-300 focus:outline-none focus:border-bamboo transition-colors font-serif tracking-widest"
               maxLength={10}
             />

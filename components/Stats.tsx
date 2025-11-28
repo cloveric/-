@@ -1,9 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { DailyRecord } from '../types';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { InkSunIcon, InkMoonIcon } from './ZenIcons';
+import { X } from 'lucide-react';
 
 interface StatsProps {
   records: DailyRecord[];
+  onToggleRecord: (type: 'morning' | 'evening', dateStr: string) => void;
 }
 
 type ViewMode = 'week' | 'month' | 'year';
@@ -24,10 +27,19 @@ const COLORS = {
   BOTH: '#5c7c64',       
 };
 
-const Stats: React.FC<StatsProps> = ({ records }) => {
+// Helper: Get local YYYY-MM-DD string to match App.tsx logic and fix timezone bugs
+const getLocalISOString = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const Stats: React.FC<StatsProps> = ({ records, onToggleRecord }) => {
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [displayDate, setDisplayDate] = useState(new Date()); // For Month View
   const [displayYear, setDisplayYear] = useState(new Date().getFullYear()); // For Year View
+  const [editingInfo, setEditingInfo] = useState<{ date: string, dayName: string } | null>(null);
 
   const totalSessions = records.reduce((acc, curr) => {
     return acc + (curr.morning ? 1 : 0) + (curr.evening ? 1 : 0);
@@ -39,7 +51,8 @@ const Stats: React.FC<StatsProps> = ({ records }) => {
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
+      // Fix: Use local date string instead of UTC
+      const dateStr = getLocalISOString(d);
       
       const record = records.find(r => r.date === dateStr);
       const status = getStatus(record?.morning, record?.evening);
@@ -48,7 +61,7 @@ const Stats: React.FC<StatsProps> = ({ records }) => {
       // Logic for chart height/visuals
       const height = status === 3 ? 100 : (status > 0 ? 60 : 5); 
       
-      last7Days.push({ name: dayName, date: dateStr, status, height });
+      last7Days.push({ name: dayName, date: dateStr, status, height, fullDate: d });
     }
     return last7Days;
   }, [records]);
@@ -67,7 +80,8 @@ const Stats: React.FC<StatsProps> = ({ records }) => {
     
     for (let i = 1; i <= daysInMonth; i++) {
       const d = new Date(year, month, i);
-      const dateStr = d.toISOString().split('T')[0];
+      // Fix: Use local date string instead of UTC
+      const dateStr = getLocalISOString(d);
       const record = records.find(r => r.date === dateStr);
       const status = getStatus(record?.morning, record?.evening);
       
@@ -84,12 +98,9 @@ const Stats: React.FC<StatsProps> = ({ records }) => {
         const daysInMonth = new Date(displayYear, m + 1, 0).getDate();
         const monthDays = [];
         for (let d = 1; d <= daysInMonth; d++) {
-            // Note: Months are 0-indexed in JS Date, but we need correct ISO string
             const dateObj = new Date(displayYear, m, d);
-            const y = dateObj.getFullYear();
-            const mon = String(dateObj.getMonth() + 1).padStart(2, '0');
-            const day = String(dateObj.getDate()).padStart(2, '0');
-            const dateStr = `${y}-${mon}-${day}`;
+            // Fix: Use local date string (already implemented here correctly, but reinforced with helper)
+            const dateStr = getLocalISOString(dateObj);
 
             const record = records.find(r => r.date === dateStr);
             const status = getStatus(record?.morning, record?.evening);
@@ -129,8 +140,23 @@ const Stats: React.FC<StatsProps> = ({ records }) => {
     setDisplayYear(prev => prev + delta);
   };
 
+  const handleBarClick = (data: any) => {
+    if (data && data.date) {
+        setEditingInfo({ date: data.date, dayName: data.name });
+    }
+  };
+
+  const closeEditModal = () => {
+    setEditingInfo(null);
+  };
+
+  const currentEditingRecord = useMemo(() => {
+    if (!editingInfo) return null;
+    return records.find(r => r.date === editingInfo.date) || { date: editingInfo.date, morning: false, evening: false };
+  }, [editingInfo, records]);
+
   return (
-    <div className="w-full flex flex-col h-full bg-white/30 rounded-2xl p-4 backdrop-blur-sm border border-white/40">
+    <div className="w-full flex flex-col h-full bg-white/30 rounded-2xl p-4 backdrop-blur-sm border border-white/40 relative">
       
       {/* Header / Tabs */}
       <div className="flex justify-between items-center mb-4 flex-none">
@@ -157,6 +183,10 @@ const Stats: React.FC<StatsProps> = ({ records }) => {
       {/* --- WEEK VIEW --- */}
       {viewMode === 'week' && (
         <div className="absolute inset-0 w-full h-full animate-in fade-in duration-700 z-10 flex items-end pb-2">
+            {/* Legend/Hint for Backfill */}
+            <div className="absolute top-0 right-0 text-[9px] text-stone-300 font-serif pointer-events-none">
+               点击柱形可补录
+            </div>
           <ResponsiveContainer width="100%" height="90%">
             <BarChart data={weeklyData} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
               <XAxis 
@@ -181,11 +211,19 @@ const Stats: React.FC<StatsProps> = ({ records }) => {
                     return null;
                 }}
               />
-              <Bar dataKey="height" radius={[4, 4, 4, 4]} barSize={12} animationDuration={1000}>
+              <Bar 
+                 dataKey="height" 
+                 radius={[4, 4, 4, 4]} 
+                 barSize={12} 
+                 animationDuration={1000}
+                 onClick={handleBarClick}
+                 className="cursor-pointer"
+               >
                 {weeklyData.map((entry, index) => (
                   <Cell 
                     key={`cell-${index}`} 
                     fill={getColor(entry.status)} 
+                    className="hover:opacity-80 transition-opacity cursor-pointer"
                   />
                 ))}
               </Bar>
@@ -269,6 +307,46 @@ const Stats: React.FC<StatsProps> = ({ records }) => {
         </div>
       )}
       </div>
+
+      {/* --- BACKFILL MODAL --- */}
+      {editingInfo && currentEditingRecord && (
+         <div className="absolute inset-0 z-50 flex items-center justify-center p-4 rounded-2xl bg-white/40 backdrop-blur-md animate-in fade-in zoom-in duration-200">
+            <div className="bg-[#f7f5f0] w-full max-w-[200px] rounded-xl shadow-xl border border-stone-100 p-4 relative">
+                <button 
+                  onClick={closeEditModal}
+                  className="absolute top-2 right-2 text-stone-400 hover:text-stone-600"
+                >
+                    <X size={14} />
+                </button>
+                
+                <h3 className="text-center font-serif text-stone-600 text-sm font-bold tracking-widest mb-4">
+                    补录 · {editingInfo.date.split('-')[1]}月{editingInfo.date.split('-')[2]}日 · {editingInfo.dayName}
+                </h3>
+                
+                <div className="flex gap-3 justify-center">
+                    <button
+                        onClick={() => onToggleRecord('morning', editingInfo.date)}
+                        className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-all ${currentEditingRecord.morning ? 'bg-white border border-clay/30 shadow-sm' : 'hover:bg-black/5'}`}
+                    >
+                        <div className="w-8 h-8">
+                            <InkSunIcon active={currentEditingRecord.morning} />
+                        </div>
+                        <span className={`text-[9px] font-serif ${currentEditingRecord.morning ? 'text-clay' : 'text-stone-400'}`}>早</span>
+                    </button>
+                    
+                    <button
+                        onClick={() => onToggleRecord('evening', editingInfo.date)}
+                         className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-all ${currentEditingRecord.evening ? 'bg-white border border-stone-300/30 shadow-sm' : 'hover:bg-black/5'}`}
+                    >
+                        <div className="w-8 h-8">
+                            <InkMoonIcon active={currentEditingRecord.evening} />
+                        </div>
+                        <span className={`text-[9px] font-serif ${currentEditingRecord.evening ? 'text-stone-600' : 'text-stone-400'}`}>晚</span>
+                    </button>
+                </div>
+            </div>
+         </div>
+      )}
     </div>
   );
 };
