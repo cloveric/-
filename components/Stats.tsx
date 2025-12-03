@@ -58,10 +58,22 @@ const Stats: React.FC<StatsProps> = ({ records, onToggleRecord }) => {
       const status = getStatus(record?.morning, record?.evening);
 
       const dayName = new Intl.DateTimeFormat('zh-CN', { weekday: 'short' }).format(d);
+      
+      // Format date as Month/Day (e.g. 10/19)
+      const dateLabel = `${d.getMonth() + 1}/${d.getDate()}`;
+
       // Logic for chart height/visuals
       const height = status === 3 ? 100 : (status > 0 ? 60 : 5); 
       
-      last7Days.push({ name: dayName, date: dateStr, status, height, fullDate: d });
+      last7Days.push({ 
+        name: dayName, 
+        rawDayName: dayName, 
+        dateLabel: dateLabel, // Added for two-line display
+        date: dateStr, 
+        status, 
+        height, 
+        fullDate: d 
+      });
     }
     return last7Days;
   }, [records]);
@@ -142,7 +154,8 @@ const Stats: React.FC<StatsProps> = ({ records, onToggleRecord }) => {
 
   const handleBarClick = (data: any) => {
     if (data && data.date) {
-        setEditingInfo({ date: data.date, dayName: data.name });
+        // Use rawDayName if available for cleaner modal title, fallback to name
+        setEditingInfo({ date: data.date, dayName: data.rawDayName || data.name });
     }
   };
 
@@ -189,9 +202,23 @@ const Stats: React.FC<StatsProps> = ({ records, onToggleRecord }) => {
                 dataKey="name" 
                 axisLine={false} 
                 tickLine={false} 
-                tick={{ fill: '#a8a29e', fontSize: 10, fontFamily: '"Noto Serif SC", serif' }} 
-                dy={10}
                 interval={0}
+                height={32}
+                tick={({ x, y, payload, index }) => {
+                    const item = weeklyData[index];
+                    return (
+                        <g transform={`translate(${x},${y})`}>
+                            {/* Weekday Name */}
+                            <text x={0} y={0} dy={10} textAnchor="middle" fill="#a8a29e" fontSize={10} fontFamily='"Noto Serif SC", serif'>
+                                {payload.value}
+                            </text>
+                            {/* Date (Month/Day) */}
+                            <text x={0} y={0} dy={22} textAnchor="middle" fill="#a8a29e" fontSize={8} fontFamily='"Noto Serif SC", serif' opacity={0.7}>
+                                {item ? item.dateLabel : ''}
+                            </text>
+                        </g>
+                    )
+                }}
               />
               <Tooltip 
                 cursor={{ fill: 'transparent' }}
